@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mx-auto max-w-2xl py-8">
+
+  <div class="mb-6 flex justify-between items-center">
+    <h1 class="text-2xl font-bold">Movie List</h1>
+    {% if user.is_authenticated %}
+      <a href="{% url 'movie_add' %}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Add Movie</a>
+    {% else %}
+      <a href="{% url 'login' %}" class="text-blue-600 underline">Login to add a movie</a>
+    {% endif %}
+  </div>
+
+  <!-- Sort bar -->
+  <div class="mb-4 space-x-4">
+    <a href="?sort=date{% if filter_user %}&user_id={{ filter_user.id }}{% endif %}" class="text-sm text-gray-700 hover:underline">Sort by date</a>
+    <a href="?sort=likes{% if filter_user %}&user_id={{ filter_user.id }}{% endif %}" class="text-sm text-gray-700 hover:underline">Sort by likes</a>
+    <a href="?sort=hates{% if filter_user %}&user_id={{ filter_user.id }}{% endif %}" class="text-sm text-gray-700 hover:underline">Sort by hates</a>
+  </div>
+
+  {% if filter_user %}
+    <div class="mb-2 text-sm">
+      Showing movies by <strong>{{ filter_user.username }}</strong>.
+      <a href="{% url 'movie_list' %}?sort={{ sort }}" class="text-blue-600 hover:underline">Back to all movies</a>
+    </div>
+  {% endif %}
+
+  {% for movie in movies %}
+    <div class="border border-gray-300 rounded p-4 mb-6 shadow-sm">
+      <h2 class="text-xl font-bold">{{ movie.title }}</h2>
+      <p class="text-sm text-gray-600">
+        Posted by 
+        <a href="{% url 'user_movies' movie.user.id %}?sort={{ sort }}" class="text-blue-600 hover:underline">
+          {{ movie.user.username }}
+        </a> • {{ movie.date_added|timesince }} ago
+      </p>
+      <p class="mt-2 text-sm text-gray-800 whitespace-pre-line">{{ movie.description }}</p>
+
+      <div class="mt-4 text-sm text-gray-700 flex items-center gap-4">
+
+        {% if user.is_authenticated and user != movie.user %}
+          <!-- Like form -->
+          <form method="post" action="{% url 'vote' movie.id 'like' %}">
+            {% csrf_token %}
+            <button type="submit"
+                    class="px-3 py-1 rounded 
+                    {% if movie.user_vote == 'like' %}
+                      bg-green-600 text-white
+                    {% else %}
+                      bg-gray-200 text-gray-700
+                    {% endif %}">
+              👍 {{ movie.likes_count|default:0 }}
+            </button>
+          </form>
+
+          <!-- Hate form -->
+          <form method="post" action="{% url 'vote' movie.id 'hate' %}">
+            {% csrf_token %}
+            <button type="submit"
+                    class="px-3 py-1 rounded 
+                    {% if movie.user_vote == 'hate' %}
+                      bg-red-600 text-white
+                    {% else %}
+                      bg-gray-200 text-gray-700
+                    {% endif %}">
+              👎 {{ movie.hates_count|default:0 }}
+            </button>
+          </form>
+
+        
+        {% else %}
+          <!-- Show counts only -->
+          <span class="bg-gray-100 text-gray-800 px-3 py-1 rounded">
+            👍 {{ movie.likes_count|default:0 }}
+          </span>
+          <span class="bg-gray-100 text-gray-800 px-3 py-1 rounded">
+            👎 {{ movie.hates_count|default:0 }}
+          </span>
+
+          {% if user == movie.user %}
+            <span class="italic text-gray-400">You can't vote on your own movie.</span>
+          {% elif not user.is_authenticated %}
+            <a href="{% url 'login' %}" class="text-blue-600 hover:underline">Login to vote</a>
+          {% endif %}
+        {% endif %}
+
+      </div>
+    </div>
+  {% empty %}
+    <p>No movies found.</p>
+  {% endfor %}
+
+  <!-- Pagination controls -->
+  {% if page_obj.has_other_pages %}
+    <div class="mt-8 flex justify-center gap-2">
+      {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}{% if sort %}&sort={{ sort }}{% endif %}"
+          class="px-3 py-1 border rounded bg-gray-200 text-gray-700 hover:bg-gray-300">
+          Previous
+        </a>
+      {% endif %}
+
+      <span class="px-3 py-1 border rounded text-gray-500">
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+      </span>
+
+      {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if sort %}&sort={{ sort }}{% endif %}"
+          class="px-3 py-1 border rounded bg-gray-200 text-gray-700 hover:bg-gray-300">
+          Next
+        </a>
+      {% endif %}
+    </div>
+  {% endif %}
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MovieRama</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+  <!-- Header -->
+  <header class="bg-white shadow">
+    <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+      <h1 class="text-xl font-bold">
+        <a href="{% url 'movie_list' %}">🎬 MovieRama</a>
+      </h1>
+
+      <nav class="space-x-4 text-sm">
+        {% if user.is_authenticated %}
+          <span class="text-gray-600">Logged in as {{ user.username }}</span>
+          <form method="post" action="{% url 'logout' %}" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="text-blue-600 hover:underline">Logout</button>
+          </form>
+
+        {% else %}
+          <a href="{% url 'login' %}" class="text-blue-600 hover:underline">Login</a>
+          <a href="{% url 'signup' %}" class="text-blue-600 hover:underline">Sign Up</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main class="container mx-auto px-4 py-8">
+    <!-- Flash messages -->
+    {% if messages %}
+      <div class="mb-4 space-y-2">
+        {% for message in messages %}
+          <div class="px-4 py-2 rounded 
+                      {% if message.tags == 'success' %}
+                        bg-green-100 text-green-800
+                      {% elif message.tags == 'error' %}
+                        bg-red-100 text-red-800
+                      {% else %}
+                        bg-blue-100 text-blue-800
+                      {% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+</body>
+</html>
