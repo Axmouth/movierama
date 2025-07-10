@@ -1,0 +1,43 @@
+name: Deploy MovieRama to VPS via GHCR
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  deploy:
+    name: Build and Deploy to VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+
+      - name: Pull existing image (optional cache)
+        run: docker pull ghcr.io/${{ github.repository }} || true
+
+      - name: Build Docker image
+        run: docker build . -t ghcr.io/${{ github.repository }} --cache-from=ghcr.io/${{ github.repository }}
+
+      - name: Push Docker image
+        run: docker push ghcr.io/${{ github.repository }}
+
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_KEY }}
+          known_hosts: ${{ secrets.KNOWN_HOSTS }}
+
+      - name: Deploy via SSH Docker Compose
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SERVER_USERNAME: ${{ secrets.SERVER_USERNAME }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+        run: |
+          COMPOSE_PARAMIKO_SSH=1 \
+          DOCKER_HOST="ssh://$SERVER_USERNAME@$SERVER_IP:$SSH_PORT" \
+          docker-compose pull && \
+          docker-compose up -d --remove-orphans
