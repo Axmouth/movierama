@@ -2,16 +2,19 @@ version: '3.9'
 
 services:
   web:
-    build: .
+    # Used for remote deployment
+    image: ghcr.io/axmouth/movierama:latest
     command: python manage.py runserver 0.0.0.0:8000
-    volumes:
-      - .:/app
     ports:
       - "8734:8000"
-    environment:
-      DATABASE_URL: postgres://devuser:devpass@db:5432/movierama
     env_file:
       - .env
+    environment:
+      DATABASE_URL: postgres://devuser:devpass@db:5432/movierama
+      DEBUG: ${DEBUG:-false}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,[::1]}
+      SECRET_KEY: ${SECRET_KEY}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-http://localhost:8000,http://localhost:8734}
     depends_on:
       - db
 

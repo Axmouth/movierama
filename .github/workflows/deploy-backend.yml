@@ -1,8 +1,8 @@
-name: Deploy MovieRama to VPS via GHCR
+name: Deploy MovieRama to VPS
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
   deploy:
@@ -17,13 +17,13 @@ jobs:
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
 
       - name: Pull existing image (optional cache)
-        run: docker pull ghcr.io/${{ github.repository }} || true
+        run: docker pull ghcr.io/axmouth/movierama || true
 
       - name: Build Docker image
-        run: docker build . -t ghcr.io/${{ github.repository }} --cache-from=ghcr.io/${{ github.repository }}
+        run: docker build . -t ghcr.io/axmouth/movierama --cache-from=ghcr.io/axmouth/movierama
 
       - name: Push Docker image
-        run: docker push ghcr.io/${{ github.repository }}
+        run: docker push ghcr.io/axmouth/movierama
 
       - name: Install SSH key
         uses: shimataro/ssh-key-action@v2
@@ -31,13 +31,29 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           known_hosts: ${{ secrets.KNOWN_HOSTS }}
 
+      - name: Create .env for deploy
+        run: |
+            echo "DEBUG=false" > .env
+            echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env
+            echo "ALLOWED_HOSTS=localhost,127.0.0.1,[::1],movierama.axmouth.dev" >> .env
+            echo "CSRF_TRUSTED_ORIGINS=http://movierama.axmouth.dev,https://movierama.axmouth.dev,http://localhost:8000,http://localhost:8734" >> .env
+
       - name: Deploy via SSH Docker Compose
         env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
           SERVER_IP: ${{ secrets.SERVER_IP }}
           SERVER_USERNAME: ${{ secrets.SERVER_USERNAME }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
         run: |
-          COMPOSE_PARAMIKO_SSH=1 \
-          DOCKER_HOST="ssh://$SERVER_USERNAME@$SERVER_IP:$SSH_PORT" \
-          docker-compose pull && \
-          docker-compose up -d --remove-orphans
+            DOCKER_HOST="ssh://${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }}:${{ secrets.SSH_PORT }}"
+
+            docker context create my-vps --docker "host=${DOCKER_HOST}" || true
+            docker context use my-vps
+
+            docker compose stop || true
+            docker compose pull
+            docker compose -f docker-compose.yml up -d
+
+            # 🔧 Run migrations inside the running 'web' container
+            docker compose exec web python manage.py migrate
+            docker compose exec web python manage.py collectstatic --noinput

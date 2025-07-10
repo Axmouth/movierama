@@ -1,5 +1,7 @@
 ## 🚀 Getting Started
 
+Live demo: [movierama.axmouth.dev](https://movierama.axmouth.dev)
+
 ### 🔧 Requirements
 
 * Python 3.11+ (recommended: via [pyenv](https://github.com/pyenv/pyenv))
@@ -20,12 +22,14 @@
 2. **Start the local dev environment**
 
    ```bash
+   docker build . -t ghcr.io/axmouth/movierama
+   docker compose exec web python manage.py migrate
    docker-compose up --build
    ```
 
    This will start:
 
-   * Django app ([http://localhost:8000](http://localhost:8000))
+   * Django app ([http://localhost:8734](http://localhost:8734))
    * Postgres DB (on internal Docker network)
 
 3. **Apply migrations & create a superuser**
